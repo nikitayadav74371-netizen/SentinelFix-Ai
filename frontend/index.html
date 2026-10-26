@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sentinel AI — Autonomous Vulnerability Detection &amp; Remediation</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><text y='20' font-size='20'>🛡️</text></svg>">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/assets/style.css">
+</head>
+<body>
+  <!-- Header Bar -->
+  <header class="topbar">
+    <div class="brand">
+      <div class="brand-icon">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+          <path d="m9 12 2 2 4-4"/>
+        </svg>
+      </div>
+      <div>
+        <h1>Sentinel <span>AI</span></h1>
+        <p>Autonomous Vulnerability Detection &amp; Code Remediation</p>
+      </div>
+    </div>
+    <div class="topbar-actions">
+      <div class="llm-status" id="llmStatus">
+        <span class="dot"></span>
+        <span id="llmText">Connecting to System Engine…</span>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <!-- VIEW 1: Project Input -->
+    <section class="card active-view" id="viewSetup">
+      <div class="section-header">
+        <h2>Start Security Inspection</h2>
+        <p class="subtitle">Point Sentinel AI to your project. It will scan every source file, confirm exploitable vulnerabilities, and generate verified patches — without touching your originals.</p>
+      </div>
+
+      <div class="tabs" role="tablist">
+        <button class="tab active" data-mode="local" role="tab">📁 Local Project</button>
+        <button class="tab" data-mode="github" role="tab">🐙 GitHub Repository</button>
+        <a href="/chatbot" class="tab-link" role="tab">⚡ AI Copilot Chat</a>
+      </div>
+
+      <div class="field" id="localField">
+        <label for="localPath">Local Directory or File Path</label>
+        <input id="localPath" type="text" placeholder="/Users/username/Projects/my-web-app" spellcheck="false">
+        <small>Supported: <code>.py</code> <code>.js</code> <code>.ts</code> <code>.php</code> <code>.c</code> <code>.cpp</code> <code>.html</code> — your original files are never modified.</small>
+      </div>
+
+      <div class="field hidden" id="githubField">
+        <label for="githubUrl">Public GitHub Repository URL</label>
+        <input id="githubUrl" type="text" placeholder="https://github.com/organization/repository" spellcheck="false">
+        <label for="parityPath" class="sub">Local Reference Path <em>(Optional — checks if your local copy matches GitHub)</em></label>
+        <input id="parityPath" type="text" placeholder="/Users/username/Projects/my-web-app" spellcheck="false">
+        <small>Sentinel AI clones the repository into an isolated environment. Each file is scanned individually.</small>
+      </div>
+
+      <details class="advanced">
+        <summary>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
+          System Engine Settings
+        </summary>
+        <div class="grid2">
+          <div>
+            <label for="model">Ollama Model</label>
+            <select id="model"></select>
+          </div>
+          <div>
+            <label for="host">Ollama Host</label>
+            <input id="host" type="text" value="http://localhost:11434">
+          </div>
+        </div>
+        <label class="check">
+          <input type="checkbox" id="useLlm" checked>
+          <span>Use local LLM for complex pattern analysis (command injection, buffer overflows, eval)</span>
+        </label>
+      </details>
+
+      <div id="formError" class="error-banner hidden" role="alert"></div>
+
+      <div class="action-footer">
+        <button class="btn btn-primary" id="startBtn">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+          Start Security Scan
+        </button>
+      </div>
+    </section>
+
+    <!-- VIEW 2: Real-Time Scanning Terminal -->
+    <section class="card hidden" id="viewScanning">
+      <div class="row-between">
+        <div>
+          <h2>Running Security Analysis</h2>
+          <span class="meta-label" id="jobLabel">Preparing environment...</span>
+        </div>
+        <div id="parityBox" class="notice-badge hidden"></div>
+      </div>
+
+      <!-- Pipeline Graph -->
+      <div class="pipeline-flow">
+        <div class="flow-step" data-node="analyst">
+          <span class="step-num">1</span>
+          <div class="step-text"><b>Analyst</b><small>Scans files</small></div>
+        </div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-step" data-node="found">
+          <span class="step-num">2</span>
+          <div class="step-text"><b>Detected</b><small id="foundCount">–</small></div>
+        </div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-step" data-node="validator">
+          <span class="step-num">3</span>
+          <div class="step-text"><b>Validator</b><small>Confirms risk</small></div>
+        </div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-step" data-node="confirmed">
+          <span class="step-num">4</span>
+          <div class="step-text"><b>Confirmed</b><small id="confirmedCount">–</small></div>
+        </div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-step" data-node="patcher">
+          <span class="step-num">5</span>
+          <div class="step-text"><b>Patcher</b><small>Generates fix</small></div>
+        </div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-step" data-node="judge">
+          <span class="step-num">6</span>
+          <div class="step-text"><b>Judge</b><small id="judgeText">PASS / REJECT</small></div>
+        </div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-step" data-node="regression">
+          <span class="step-num">7</span>
+          <div class="step-text"><b>Regression</b><small>Syntax check</small></div>
+        </div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-step final" data-node="verified">
+          <span class="step-num">8</span>
+          <div class="step-text"><b>Verified</b><small id="verifiedCount">–</small></div>
+        </div>
+      </div>
+
+      <!-- Progress Bar -->
+      <div class="progress-meter">
+        <div class="progress-fill" id="progressBar"></div>
+      </div>
+
+      <!-- macOS-style Terminal -->
+      <div class="mac-terminal">
+        <div class="terminal-bar">
+          <div class="traffic-lights">
+            <span class="btn-close"></span>
+            <span class="btn-min"></span>
+            <span class="btn-max"></span>
+          </div>
+          <div class="terminal-title">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>
+            sentinel-ai — security-agent — zsh
+          </div>
+          <div class="terminal-actions">
+            <span class="terminal-status-tag" id="terminalStatus">RUNNING</span>
+          </div>
+        </div>
+        <div class="terminal-body" id="terminalLog">
+          <div class="term-line info"><span class="prompt">$</span> initializing sentinel ai agent...</div>
+        </div>
+      </div>
+
+      <!-- Completion Banner — shown after scan finishes -->
+      <div class="scan-finished-banner hidden" id="completionBanner">
+        <div class="banner-content">
+          <div class="banner-icon">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+          </div>
+          <div>
+            <h3>Analysis Complete</h3>
+            <p id="completionSummary">All files scanned, patches validated and verified.</p>
+          </div>
+        </div>
+        <button class="btn btn-success" id="openResultsBtn">
+          View Full Report &amp; Fixes
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+        </button>
+      </div>
+    </section>
+
+    <!-- VIEW 3: Results Report -->
+    <section class="card hidden" id="viewReport">
+      <div class="report-navbar">
+        <div style="display: flex; gap: 10px;">
+          <button class="btn btn-secondary btn-sm" id="backToScanBtn" title="Back to terminal logs">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+            Terminal Logs
+          </button>
+          <button class="btn btn-secondary btn-sm" id="newScanBtn">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+            Scan New Project
+          </button>
+        </div>
+        <div class="report-header-title">
+          <h2>Security Audit Report</h2>
+          <span class="meta-label" id="reportSourceLabel">Source</span>
+        </div>
+        <a class="btn btn-primary" id="downloadZipBtn" href="#">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Download Patched Project (.zip)
+        </a>
+      </div>
+
+      <!-- Metrics -->
+      <div class="metrics-grid" id="metricsStats"></div>
+
+      <!-- Filter Chips -->
+      <div class="filter-bar">
+        <span class="filter-label">Filter by Status:</span>
+        <div class="chips-container" id="filterChips"></div>
+      </div>
+
+      <!-- Findings -->
+      <div class="findings-list" id="findingsList"></div>
+    </section>
+  </main>
+
+  <footer>
+    <p>Sentinel AI &nbsp;·&nbsp; Autonomous Vulnerability Detection &amp; Code Remediation &nbsp;·&nbsp; Original source files are never modified.</p>
+  </footer>
+
+  <script src="/assets/app.js"></script>
+</body>
+</html>

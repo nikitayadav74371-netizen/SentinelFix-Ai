@@ -1,0 +1,667 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sentinel AI — Security Copilot</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><text y='20' font-size='20'>⚡</text></svg>">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/assets/style.css">
+  <style>
+    /* ─── Layout ─────────────────────────────────── */
+    body { overflow: hidden; }
+    .copilot-wrap {
+      display: grid;
+      grid-template-columns: 290px 1fr;
+      gap: 16px;
+      height: calc(100vh - 76px);
+      padding: 16px 24px;
+      box-sizing: border-box;
+    }
+
+    /* ─── Left Sidebar ───────────────────────────── */
+    .sidebar {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-lg);
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+      overflow: hidden;
+    }
+    .sidebar-section {
+      padding: 16px;
+      border-bottom: 1px solid var(--border-subtle);
+    }
+    .sidebar-section:last-child { border-bottom: none; flex: 1; overflow-y: auto; }
+    .sidebar-label {
+      font-size: 10.5px;
+      font-weight: 700;
+      letter-spacing: 0.8px;
+      text-transform: uppercase;
+      color: var(--text-dim);
+      margin-bottom: 10px;
+      display: block;
+    }
+
+    /* Engine & Model selectors */
+    .engine-row {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .engine-row select {
+      width: 100%;
+      padding: 8px 10px;
+      font-size: 12.5px;
+      font-family: var(--font-mono);
+      background: var(--bg-primary);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-sm);
+      color: var(--text-main);
+      cursor: pointer;
+    }
+    .engine-row select:focus { outline: none; border-color: var(--accent-blue); }
+    .engine-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 11px;
+      padding: 4px 8px;
+      border-radius: 99px;
+      font-family: var(--font-mono);
+      font-weight: 600;
+    }
+    .engine-badge.local  { background: rgba(16,185,129,0.12); color: var(--status-ok); border: 1px solid rgba(16,185,129,0.25); }
+    .engine-badge.cloud  { background: rgba(56,189,248,0.12); color: var(--accent-blue); border: 1px solid rgba(56,189,248,0.25); }
+    .engine-badge.offline { background: rgba(239,68,68,0.12); color: var(--status-danger); border: 1px solid rgba(239,68,68,0.25); }
+
+    /* File Upload */
+    .dropzone {
+      border: 2px dashed var(--border-subtle);
+      border-radius: var(--radius-md);
+      padding: 16px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .dropzone:hover, .dropzone.dragover {
+      border-color: var(--accent-blue);
+      background: rgba(56,189,248,0.04);
+    }
+    .dropzone p { margin: 6px 0 0; font-size: 12px; color: var(--text-muted); }
+    .dropzone small { color: var(--text-dim); font-size: 11px; }
+    .file-badge {
+      background: var(--bg-surface-elevated);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-sm);
+      padding: 10px;
+      font-family: var(--font-mono);
+      font-size: 12px;
+      position: relative;
+    }
+    .file-badge .fname { color: var(--accent-blue); font-weight: 600; }
+    .file-badge .fmeta { color: var(--text-dim); font-size: 11px; margin-top: 2px; }
+    .file-badge .rm {
+      position: absolute; top: 6px; right: 8px;
+      background: none; border: none; color: var(--status-danger); cursor: pointer; font-size: 14px;
+    }
+
+    /* Quick prompts */
+    .quick-btn {
+      display: block;
+      width: 100%;
+      text-align: left;
+      background: var(--bg-primary);
+      border: 1px solid var(--border-subtle);
+      color: var(--text-muted);
+      padding: 9px 12px;
+      border-radius: var(--radius-sm);
+      font-size: 12px;
+      cursor: pointer;
+      transition: all 0.18s;
+      margin-bottom: 6px;
+      line-height: 1.4;
+    }
+    .quick-btn:last-child { margin-bottom: 0; }
+    .quick-btn:hover { border-color: var(--accent-blue); color: #fff; background: rgba(56,189,248,0.06); }
+
+    /* New chat button */
+    .new-chat-btn {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      width: 100%;
+      background: none;
+      border: 1px solid var(--border-subtle);
+      color: var(--text-muted);
+      padding: 9px 12px;
+      border-radius: var(--radius-sm);
+      font-size: 12.5px;
+      cursor: pointer;
+      transition: all 0.18s;
+      font-family: var(--font-sans);
+    }
+    .new-chat-btn:hover { border-color: var(--accent-blue); color: #fff; }
+
+    /* ─── Chat Area ──────────────────────────────── */
+    .chat-area {
+      display: flex;
+      flex-direction: column;
+      background: #06090e;
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.6);
+    }
+    .chat-topbar {
+      padding: 12px 18px;
+      background: #0d131d;
+      border-bottom: 1px solid #1a2332;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-shrink: 0;
+    }
+    .chat-title { font-size: 13px; font-weight: 600; color: var(--text-main); font-family: var(--font-mono); }
+    .chat-subtitle { font-size: 11px; color: var(--text-dim); margin-top: 1px; }
+
+    /* Messages */
+    .messages {
+      flex: 1;
+      overflow-y: auto;
+      padding: 24px 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+    .msg { display: flex; flex-direction: column; gap: 5px; animation: fadeIn 0.2s ease; }
+    .msg-meta {
+      font-family: var(--font-mono);
+      font-size: 10.5px;
+      font-weight: 700;
+      letter-spacing: 0.4px;
+      display: flex;
+      align-items: center;
+      gap: 7px;
+    }
+    .msg.user  .msg-meta { color: var(--accent-blue); }
+    .msg.ai    .msg-meta { color: var(--status-ok); }
+    .msg.error .msg-meta { color: var(--status-danger); }
+    .msg-body {
+      background: #0c111a;
+      border: 1px solid #1a2536;
+      border-radius: 10px;
+      padding: 14px 18px;
+      font-size: 13.5px;
+      line-height: 1.65;
+      color: #e2e8f0;
+    }
+    .msg.user .msg-body { background: #101826; border-color: #24354d; }
+    .msg.error .msg-body { border-color: var(--status-danger); background: rgba(239,68,68,0.06); color: #fca5a5; }
+    .msg-body pre {
+      background: #04060a;
+      border: 1px solid #1c2738;
+      border-radius: 7px;
+      padding: 14px;
+      overflow-x: auto;
+      font-family: var(--font-mono);
+      font-size: 12px;
+      margin: 12px 0;
+      position: relative;
+    }
+    .copy-btn {
+      position: absolute; top: 7px; right: 8px;
+      background: #172233; border: 1px solid #2a3d59; color: var(--text-muted);
+      border-radius: 4px; font-size: 10px; padding: 3px 8px; cursor: pointer;
+      transition: all 0.15s;
+    }
+    .copy-btn:hover { background: #1f3049; color: #fff; }
+    .msg-body code {
+      background: #172233; padding: 2px 6px; border-radius: 4px;
+      color: #38bdf8; font-family: var(--font-mono); font-size: 12.5px;
+    }
+    .msg-body h1, .msg-body h2, .msg-body h3 {
+      margin: 16px 0 8px; color: #f1f5f9; font-size: 14px;
+    }
+    .msg-body p { margin: 8px 0; }
+    .msg-body ul, .msg-body ol { padding-left: 20px; margin: 8px 0; }
+    .msg-body li { margin-bottom: 4px; }
+    .msg-body strong { color: #f8fafc; }
+    .msg-body hr { border-color: #1a2536; margin: 14px 0; }
+
+    /* Typing indicator */
+    .typing-indicator {
+      display: flex; gap: 5px; align-items: center; padding: 4px 0;
+    }
+    .typing-indicator span {
+      width: 7px; height: 7px; border-radius: 50%;
+      background: var(--status-ok); opacity: 0.5;
+      animation: pulse-dot 1.2s ease-in-out infinite;
+    }
+    .typing-indicator span:nth-child(2) { animation-delay: 0.2s; }
+    .typing-indicator span:nth-child(3) { animation-delay: 0.4s; }
+    @keyframes pulse-dot { 0%,80%,100% { opacity:0.3; transform:scale(1); } 40% { opacity:1; transform:scale(1.2); } }
+    @keyframes fadeIn { from { opacity:0; transform:translateY(4px); } to { opacity:1; } }
+
+    /* Input Bar */
+    .input-bar {
+      padding: 14px 18px;
+      background: #0d131d;
+      border-top: 1px solid #1a2332;
+      display: flex;
+      gap: 10px;
+      align-items: flex-end;
+      flex-shrink: 0;
+    }
+    .input-bar textarea {
+      flex: 1;
+      min-height: 44px;
+      max-height: 140px;
+      padding: 11px 14px;
+      background: #0a0f18;
+      border: 1px solid var(--border-subtle);
+      border-radius: 8px;
+      color: #fff;
+      font-family: var(--font-mono);
+      font-size: 13px;
+      resize: none;
+      outline: none;
+      line-height: 1.5;
+      overflow-y: auto;
+    }
+    .input-bar textarea:focus { border-color: var(--accent-blue); box-shadow: 0 0 0 2px var(--accent-blue-glow); }
+    .send-btn {
+      background: var(--accent-blue);
+      color: #051329;
+      border: none;
+      border-radius: 8px;
+      padding: 11px 18px;
+      font-weight: 700;
+      font-size: 13px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-shrink: 0;
+      height: 44px;
+      transition: filter 0.15s;
+    }
+    .send-btn:hover { filter: brightness(1.12); }
+    .send-btn:disabled { opacity: 0.45; cursor: not-allowed; filter: none; }
+
+    @media (max-width: 800px) {
+      .copilot-wrap { grid-template-columns: 1fr; height: auto; overflow: visible; }
+      body { overflow: auto; }
+      .chat-area { height: 70vh; }
+      .sidebar { max-height: 300px; overflow-y: auto; }
+    }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <a href="/" style="display:flex;align-items:center;gap:12px;text-decoration:none;">
+        <div class="brand-icon">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polygon points="12 8 8 12 12 16 16 12 12 8"/></svg>
+        </div>
+        <div>
+          <h1>Sentinel <span>AI</span></h1>
+          <p>Security Copilot — AI Code Intelligence</p>
+        </div>
+      </a>
+    </div>
+    <div style="display:flex;gap:10px;align-items:center;">
+      <a href="/" class="btn btn-secondary btn-sm">← Back to Scanner</a>
+    </div>
+  </header>
+
+  <div class="copilot-wrap">
+    <!-- ── Left Sidebar ── -->
+    <aside class="sidebar">
+
+      <!-- Engine & Model -->
+      <div class="sidebar-section">
+        <span class="sidebar-label">AI Engine</span>
+        <div class="engine-row">
+          <select id="engineSelect">
+            <option value="system">System Model (Local)</option>
+            <option value="online">Online Model (Cloud)</option>
+          </select>
+          <select id="modelSelect"></select>
+          <div id="engineBadge" class="engine-badge offline">● Checking...</div>
+        </div>
+      </div>
+
+      <!-- File Upload -->
+      <div class="sidebar-section">
+        <span class="sidebar-label">Attach Code File</span>
+        <div class="dropzone" id="dropzone">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--text-dim);"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          <p><b>Upload File</b> or drag &amp; drop</p>
+          <small>.py .js .c .cpp .html .php .txt</small>
+          <input type="file" id="fileInput" class="hidden" accept=".py,.js,.ts,.jsx,.tsx,.c,.cpp,.h,.html,.php,.txt,.json,.css">
+        </div>
+        <div id="fileBadge" class="file-badge hidden">
+          <button class="rm" id="removeFile">✕</button>
+          <div class="fname" id="fileName">file.py</div>
+          <div class="fmeta" id="fileMeta">0 lines · 0 KB</div>
+        </div>
+      </div>
+
+      <!-- New Chat -->
+      <div class="sidebar-section" style="padding-bottom:10px;">
+        <button class="new-chat-btn" id="newChatBtn">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          New Conversation
+        </button>
+      </div>
+
+      <!-- Quick Prompts -->
+      <div class="sidebar-section">
+        <span class="sidebar-label">Quick Actions</span>
+        <button class="quick-btn" data-p="Analyze this code for OWASP Top 10 security vulnerabilities and explain each attack vector clearly.">🛡️ Audit for OWASP / CWE flaws</button>
+        <button class="quick-btn" data-p="Rewrite this code to prevent SQL injection, command injection, and any other injection vulnerabilities.">🔒 Refactor to secure code</button>
+        <button class="quick-btn" data-p="Generate a clean, professional HTML login form with CSRF protection, input validation, rate limiting notes, and modern security attributes.">⚡ Build a secure login form</button>
+        <button class="quick-btn" data-p="Explain this code line by line in simple, plain English. Point out any dangerous operations or logic flaws.">📖 Explain code in plain English</button>
+        <button class="quick-btn" data-p="Review this code for common security anti-patterns and suggest improvements with examples.">🔍 Review for security anti-patterns</button>
+      </div>
+
+    </aside>
+
+    <!-- ── Chat Area ── -->
+    <section class="chat-area">
+      <div class="chat-topbar">
+        <div class="traffic-lights">
+          <span class="btn-close"></span>
+          <span class="btn-min"></span>
+          <span class="btn-max"></span>
+        </div>
+        <div>
+          <div class="chat-title">SENTINEL://COPILOT_ENGINE</div>
+          <div class="chat-subtitle">Security Q&amp;A · Code Analysis · Secure Code Generation</div>
+        </div>
+        <div id="sessionInfo" style="font-family:var(--font-mono);font-size:11px;color:var(--text-dim);">0 messages</div>
+      </div>
+
+      <div class="messages" id="messages">
+        <div class="msg ai">
+          <div class="msg-meta"><span style="color:#27c93f;">●</span> COPILOT [READY]</div>
+          <div class="msg-body">
+            Welcome to <strong>Sentinel AI Copilot</strong>.<br><br>
+            You can ask security questions, request a code review, or generate secure code. Attach a file from the sidebar to include it as context for your question.<br><br>
+            This is a fresh conversation — your chat history is maintained across messages within this session so the AI remembers context.
+          </div>
+        </div>
+      </div>
+
+      <div class="input-bar">
+        <textarea id="promptInput" placeholder="Ask a security question, request code review, or say 'create a secure login form'... (Shift+Enter for new line)" rows="1"></textarea>
+        <button class="send-btn" id="sendBtn">
+          Run
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+        </button>
+      </div>
+    </section>
+  </div>
+
+  <script>
+  "use strict";
+  const $ = (s) => document.querySelector(s);
+
+  // ── State ─────────────────────────────────────────────────────
+  let history = [];          // [{role:"user"|"assistant", content:"..."}]
+  let attached = { name: null, content: null };
+  let modelCache = { system: { models: [], available: false }, online: { models: [] } };
+
+  // ── Helpers ───────────────────────────────────────────────────
+  function escHtml(s) {
+    return String(s ?? "").replace(/[&<>"']/g, c =>
+      ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c])
+    );
+  }
+
+  function renderMarkdown(raw) {
+    let t = escHtml(raw);
+    // Code blocks
+    t = t.replace(/```([a-zA-Z0-9_\-]*)\n([\s\S]*?)```/g, (_, lang, code) => {
+      return `<pre><button class="copy-btn" onclick="copyCode(this)">COPY</button><code>${code.trimEnd()}</code></pre>`;
+    });
+    // Inline code
+    t = t.replace(/`([^`\n]+)`/g, '<code>$1</code>');
+    // Bold
+    t = t.replace(/\*\*([^*\n]+)\*\*/g, '<strong>$1</strong>');
+    // Italic
+    t = t.replace(/\*([^*\n]+)\*/g, '<em>$1</em>');
+    // H3
+    t = t.replace(/^### (.+)$/gm, '<h3>$1</h3>');
+    // H2
+    t = t.replace(/^## (.+)$/gm, '<h2>$1</h2>');
+    // H1
+    t = t.replace(/^# (.+)$/gm, '<h1>$1</h1>');
+    // HR
+    t = t.replace(/^---+$/gm, '<hr>');
+    // Unordered list items
+    t = t.replace(/^[\-\*] (.+)$/gm, '<li>$1</li>');
+    t = t.replace(/(<li>.*<\/li>\n?)+/g, m => `<ul>${m}</ul>`);
+    // Numbered list
+    t = t.replace(/^\d+\. (.+)$/gm, '<li>$1</li>');
+    // Line breaks (but not inside block elements)
+    t = t.replace(/\n(?!<)/g, '<br>');
+    return t;
+  }
+
+  window.copyCode = function(btn) {
+    const code = btn.nextElementSibling.innerText;
+    navigator.clipboard.writeText(code).then(() => {
+      btn.textContent = "COPIED!";
+      setTimeout(() => btn.textContent = "COPY", 1800);
+    });
+  };
+
+  function updateSessionInfo() {
+    const turns = history.filter(h => h.role === "user").length;
+    $("#sessionInfo").textContent = `${turns} message${turns !== 1 ? 's' : ''}`;
+  }
+
+  // ── Message rendering ─────────────────────────────────────────
+  function appendMsg(role, content, isTyping = false) {
+    const box = document.createElement("div");
+    box.className = `msg ${role}`;
+    const time = new Date().toLocaleTimeString("en-US", { hour12: false });
+    const label = role === "user" ? `<span style="color:#38bdf8;">▶</span> YOU [${time}]${attached.name ? ` · ${escHtml(attached.name)}` : ""}` :
+                  role === "error" ? `<span style="color:var(--status-danger);">✖</span> ERROR` :
+                  `<span style="color:#27c93f;">●</span> COPILOT`;
+    if (isTyping) {
+      box.innerHTML = `
+        <div class="msg-meta">${label}</div>
+        <div class="msg-body">
+          <div class="typing-indicator"><span></span><span></span><span></span></div>
+        </div>`;
+    } else {
+      box.innerHTML = `
+        <div class="msg-meta">${label}</div>
+        <div class="msg-body">${renderMarkdown(content)}</div>`;
+    }
+    $("#messages").appendChild(box);
+    $("#messages").scrollTop = $("#messages").scrollHeight;
+    return box;
+  }
+
+  // ── Engine / Model loading ────────────────────────────────────
+  async function loadModels() {
+    try {
+      const r = await fetch("/api/chat/models");
+      const d = await r.json();
+      modelCache = d;
+    } catch (_) {}
+    renderModels();
+    updateBadge();
+  }
+
+  function renderModels() {
+    const sel = $("#modelSelect");
+    const engine = $("#engineSelect").value;
+    const list = engine === "online" ? (modelCache.online.models || []) : (modelCache.system.models || []);
+    sel.innerHTML = "";
+    list.forEach(m => {
+      const o = document.createElement("option");
+      o.value = o.textContent = m;
+      sel.appendChild(o);
+    });
+  }
+
+  function updateBadge() {
+    const engine = $("#engineSelect").value;
+    const badge = $("#engineBadge");
+    if (engine === "system") {
+      if (modelCache.system.available) {
+        badge.className = "engine-badge local";
+        badge.textContent = "● System Model (Local) — Online";
+      } else {
+        badge.className = "engine-badge offline";
+        badge.textContent = "● System Model (Local) — Offline";
+      }
+    } else {
+      badge.className = "engine-badge cloud";
+      badge.textContent = "● Online Model (Cloud) — Connected";
+    }
+  }
+
+  $("#engineSelect").addEventListener("change", () => { renderModels(); updateBadge(); });
+  loadModels();
+
+  // ── File Handling ─────────────────────────────────────────────
+  const dz = $("#dropzone");
+  const fi = $("#fileInput");
+  dz.addEventListener("click", () => fi.click());
+  dz.addEventListener("dragover", e => { e.preventDefault(); dz.classList.add("dragover"); });
+  dz.addEventListener("dragleave", () => dz.classList.remove("dragover"));
+  dz.addEventListener("drop", e => { e.preventDefault(); dz.classList.remove("dragover"); if (e.dataTransfer.files[0]) loadFile(e.dataTransfer.files[0]); });
+  fi.addEventListener("change", () => { if (fi.files[0]) loadFile(fi.files[0]); });
+
+  function loadFile(file) {
+    const reader = new FileReader();
+    reader.onload = e => {
+      attached.name = file.name;
+      attached.content = e.target.result;
+      const lines = attached.content.split("\n").length;
+      $("#fileName").textContent = file.name;
+      $("#fileMeta").textContent = `${lines} lines · ${(file.size / 1024).toFixed(1)} KB`;
+      $("#fileBadge").classList.remove("hidden");
+      dz.classList.add("hidden");
+    };
+    reader.readAsText(file);
+  }
+
+  $("#removeFile").addEventListener("click", () => {
+    attached = { name: null, content: null };
+    fi.value = "";
+    $("#fileBadge").classList.add("hidden");
+    dz.classList.remove("hidden");
+  });
+
+  // ── Quick Prompts ─────────────────────────────────────────────
+  document.querySelectorAll(".quick-btn").forEach(btn => {
+    btn.addEventListener("click", () => {
+      $("#promptInput").value = btn.dataset.p;
+      send();
+    });
+  });
+
+  // ── New Chat ──────────────────────────────────────────────────
+  $("#newChatBtn").addEventListener("click", () => {
+    history = [];
+    attached = { name: null, content: null };
+    fi.value = "";
+    $("#fileBadge").classList.add("hidden");
+    dz.classList.remove("hidden");
+    $("#promptInput").value = "";
+    updateSessionInfo();
+    const msgs = $("#messages");
+    msgs.innerHTML = `
+      <div class="msg ai">
+        <div class="msg-meta"><span style="color:#27c93f;">●</span> COPILOT [READY]</div>
+        <div class="msg-body">New conversation started. Ask me anything about security, code review, or secure code generation.</div>
+      </div>`;
+  });
+
+  // ── Send Message ──────────────────────────────────────────────
+  async function send() {
+    const input = $("#promptInput");
+    const msg = input.value.trim();
+    if (!msg) return;
+
+    // Append user message to UI
+    appendMsg("user", msg);
+    input.value = "";
+    input.style.height = "auto";
+
+    // Add to history
+    history.push({ role: "user", content: msg });
+    updateSessionInfo();
+
+    // Typing indicator
+    const typingEl = appendMsg("ai", "", true);
+    $("#sendBtn").disabled = true;
+
+    try {
+      const payload = {
+        message: msg,
+        history: history.slice(0, -1),   // all previous turns (not current)
+        provider: $("#engineSelect").value,
+        model: $("#modelSelect").value,
+        system_host: "http://localhost:11434",
+        file_context: attached.content,
+        file_name: attached.name,
+      };
+
+      const res = await fetch("/api/chat/query", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.detail || "Request failed");
+
+      // Replace typing indicator with actual response
+      const providerTag = `[${escHtml(data.provider)} · ${escHtml(data.model)}]`;
+      typingEl.querySelector(".msg-meta").innerHTML = `<span style="color:#27c93f;">●</span> COPILOT ${providerTag}`;
+      typingEl.querySelector(".msg-body").innerHTML = renderMarkdown(data.reply);
+
+      // Add AI response to history
+      history.push({ role: "assistant", content: data.reply });
+      updateSessionInfo();
+
+    } catch (err) {
+      typingEl.className = "msg error";
+      typingEl.querySelector(".msg-meta").innerHTML = `<span style="color:var(--status-danger);">✖</span> ERROR`;
+      typingEl.querySelector(".msg-body").innerHTML = escHtml(err.message);
+      // Remove failed user message from history
+      history.pop();
+      updateSessionInfo();
+    } finally {
+      $("#sendBtn").disabled = false;
+      $("#messages").scrollTop = $("#messages").scrollHeight;
+    }
+  }
+
+  $("#sendBtn").addEventListener("click", send);
+  $("#promptInput").addEventListener("keydown", e => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      send();
+    }
+  });
+
+  // Auto-resize textarea
+  $("#promptInput").addEventListener("input", function() {
+    this.style.height = "auto";
+    this.style.height = Math.min(this.scrollHeight, 140) + "px";
+  });
+  </script>
+</body>
+</html>
